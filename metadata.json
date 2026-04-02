@@ -1,0 +1,7 @@
+{
+  "name": "Flow Estudios Mobile",
+  "description": "A professional-grade mobile recording studio with AI-powered mixing and mastering. Import beats, record multiple tracks, and let the AI producer polish your sound.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

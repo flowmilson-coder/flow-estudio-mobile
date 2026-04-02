@@ -1,0 +1,122 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string
+    //   - email: string (required)
+    //   - photoURL: string
+    //   - createdAt: string (date-time)
+    //
+    // Collection: projects
+    // Document ID: {projectId}
+    // Fields:
+    //   - id: string
+    //   - userId: string (required)
+    //   - title: string (required)
+    //   - createdAt: string (date-time)
+    //   - updatedAt: string (date-time)
+    //   - beatUrl: string
+    //   - isMastered: boolean
+    //   - masteredUrl: string
+    //
+    // Collection: projects/{projectId}/tracks
+    // Document ID: {trackId}
+    // Fields:
+    //   - id: string
+    //   - projectId: string (required)
+    //   - type: string (vocal, backing, beat)
+    //   - audioUrl: string (required)
+    //   - volume: number
+    //   - isMuted: boolean
+    //   - createdAt: string (date-time)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             (request.auth.token.email == "domingosafonso833@gmail.com" || 
+              (userExists() && getUserData().role == "admin"));
+    }
+
+    function isNotBanned() {
+      return isAuthenticated() && 
+             (!userExists() || getUserData().status != "banned");
+    }
+
+    function isActive() {
+      return isAuthenticated() && 
+             (isAdmin() || (userExists() && getUserData().status == "active"));
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isProjectOwner(projectId) {
+      return isAuthenticated() && get(/databases/$(database)/documents/projects/$(projectId)).data.userId == request.auth.uid;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.email.size() < 256;
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['userId', 'title', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100;
+    }
+
+    function isValidTrack(data) {
+      return data.keys().hasAll(['projectId', 'type', 'audioUrl']) &&
+             data.projectId is string &&
+             data.type in ['vocal', 'backing', 'beat'] &&
+             data.audioUrl is string;
+    }
+
+    // Rules
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if (isOwner(userId) && 
+                       (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) && 
+                       (!('status' in request.resource.data) || request.resource.data.status == resource.data.status)) || isAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if (isOwner(resource.data.userId) && isNotBanned()) || isAdmin();
+      allow create: if isActive() && isValidProject(request.resource.data);
+      allow update: if (isOwner(resource.data.userId) && isActive() && isValidProject(request.resource.data)) || isAdmin();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+
+      match /tracks/{trackId} {
+        allow read: if (isProjectOwner(projectId) && isNotBanned()) || isAdmin();
+        allow create: if (isProjectOwner(projectId) && isActive() && isValidTrack(request.resource.data)) || isAdmin();
+        allow update: if (isProjectOwner(projectId) && isActive() && isValidTrack(request.resource.data)) || isAdmin();
+        allow delete: if (isProjectOwner(projectId) || isAdmin());
+      }
+    }
+  }
+}

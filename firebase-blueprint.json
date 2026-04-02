@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "User's display name" },
+        "email": { "type": "string", "description": "User's email address" },
+        "photoURL": { "type": "string", "description": "User's profile picture URL" },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "User role" },
+        "status": { "type": "string", "enum": ["active", "banned", "pending_payment"], "description": "User account status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" },
+        "lastLogin": { "type": "string", "format": "date-time", "description": "Last login timestamp" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A recording project containing multiple tracks",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique project ID" },
+        "userId": { "type": "string", "description": "Owner's UID" },
+        "title": { "type": "string", "description": "Project title" },
+        "genre": { "type": "string", "description": "Musical genre" },
+        "producerStyle": { "type": "string", "description": "Famous producer style or AI freedom" },
+        "expectations": { "type": "string", "description": "User's expectations for the track" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" },
+        "beatUrl": { "type": "string", "description": "URL to the imported beat" },
+        "isMastered": { "type": "boolean", "description": "Whether the project has been AI mastered" },
+        "masteredUrl": { "type": "string", "description": "URL to the final mastered track" }
+      },
+      "required": ["userId", "title", "createdAt"]
+    },
+    "Track": {
+      "title": "Track",
+      "description": "An individual audio track within a project",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique track ID" },
+        "projectId": { "type": "string", "description": "Parent project ID" },
+        "type": { "type": "string", "enum": ["vocal", "backing", "beat"], "description": "Type of track" },
+        "audioUrl": { "type": "string", "description": "URL to the audio file (base64 for demo/prototype or storage URL)" },
+        "volume": { "type": "number", "description": "Track volume (0-1)" },
+        "isMuted": { "type": "boolean", "description": "Mute status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["projectId", "type", "audioUrl"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Recording projects"
+    },
+    "/projects/{projectId}/tracks/{trackId}": {
+      "schema": "Track",
+      "description": "Tracks belonging to a project"
+    }
+  }
+}
